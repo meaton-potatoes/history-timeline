@@ -1,4 +1,4 @@
-const NOW = 'NOW'
+const CURRENT_YEAR = (new Date).getFullYear()
 const ALL_ITEMS_IN_CATEGORY = 'ALL_ITEMS_IN_CATEGORY'
 
 class Timeline {
@@ -11,7 +11,11 @@ class Timeline {
       colorBasedOn: 'area',
       percentageOfPeople: 100
     },
-    displayedPeople: [],
+    people: {
+      all: [],
+      filtered: [],
+      byYear: {}
+    },
     ruler: {
       max: null,
       min: 1000000000
@@ -22,7 +26,7 @@ class Timeline {
 
   constructor(container, people) {
     this.container = container
-    this.availablePeople = people
+    this.state.people.all = people
   }
 
   applyFilters() {
@@ -34,8 +38,8 @@ class Timeline {
       min: null
     }
 
-    this.state.displayedPeople = []
-    this.availablePeople.forEach(person => {
+    this.state.people.filtered = []
+    this.state.people.all.forEach((person, i) => {
       // find default filters to save time on first loop
       if (!defaultFiltersLoaded) {
         filters.areas[person.type] = true
@@ -44,11 +48,17 @@ class Timeline {
 
       // if person fits filters
       if (filters.areas[person.type] && filters.countries[person.country]) {
-        this.state.displayedPeople.push(person)
+        this.state.people.filtered.push(person)
+
+        // organize filtered people by year
+        for (let year = person.from; year < (person.to == 0 ? CURRENT_YEAR : person.to); year++) {
+          this.state.people.byYear[year] = this.state.people.byYear[year] || []
+          this.state.people.byYear[year].push(i)
+        }
 
         // find ruler.max
         if (person.to == 0) {
-          this.state.ruler.max = NOW
+          this.state.ruler.max = CURRENT_YEAR
         } else if (!this.state.ruler.max || person.to > this.state.ruler.max) {
           this.state.ruler.max = person.to
         }
@@ -96,7 +106,7 @@ class Timeline {
       div.append(removeAll)
       html.append(div)
 
-      Object.keys(filters[filterCategory]).forEach(key => {
+      Object.keys(filters[filterCategory]).sort().forEach(key => {
         let value = filters[filterCategory][key]
         let div = $('<div></div>')
         let keyCheckbox = $(`<input id='${filterCategory}-${key}' type='checkbox' ${value && 'checked'}></input>`)
@@ -109,15 +119,57 @@ class Timeline {
     $('#sidebar').html(html)
   }
 
-  renderPeople() {
-    const { displayedPeople, ruler } = this.state
+  renderRuler() {
+    const { ruler: { min, max } } = this.state
 
-    console.log(displayedPeople, ruler)
+    this.table = $('<table></table>')
+    let thead = $('<thead></thead>')
+    for (let year = max; year > min; year--) {
+      let th = $(`<th data-year=${year}>${year % 20 == 0 ? year : ''}</th>`)
+      th.hover(({ currentTarget }) => {
+        const year = $(currentTarget).data('year')
+        const people = (this.state.people.byYear[year] || []).map(i => this.state.people.filtered[i].name)
+        console.log(year, people)
+      })
+      thead.append(th)
+    }
+    this.table.append(thead)
+    this.container.html(this.table)
+  }
+
+  renderPeople() {
+    const { ruler, people: { filtered, byYear } } = this.state
+
+    const rows = []
+    Object.keys(byYear)
+          .map(stringYear => parseInt(stringYear))
+          .sort((a,b) => b - a)
+          .forEach(year => {
+            const peopleLivingInYear = byYear[String(year)]
+            peopleLivingInYear.forEach((personIndex, i) => {
+              // debugger
+              let person = filtered[personIndex]
+              rows[i] = rows[i] || $(`<tr data-row=${i}'></tr>`)
+
+              // for (let blankCounter = year; blankCounter < ruler.max; blankCounter++){
+              //   console.log(blankCounter, person)
+              //   rows[i].append($(`<td data-year=${year}></td>`))
+              // }
+              rows[i].append($(`<td data-year=${year}>${person.name}</td>`))
+            })
+          })
+
+    rows.forEach(row => {
+      this.table.append(row)
+    })
   }
 
   render(people) {
     this.applyFilters()
     this.renderSettings()
+    this.renderRuler()
     this.renderPeople()
+    console.log('done')
+    window.state = this.state
   }
 }
