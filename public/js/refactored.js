@@ -27,8 +27,7 @@ const initialState = {
   },
   people: {
     all: [],
-    filtered: [],
-    byYear: {}
+    filteredByYear: {}
   },
   ruler: {
     max: null,
@@ -58,7 +57,9 @@ class Timeline {
     // reset years before finding ruler max and min
     this.state.ruler = { max: null, min: null }
 
-    this.state.people.filtered = []
+    // reset 
+    this.state.people.filteredByYear = {}
+
     this.state.people.all.forEach((person, i) => {
       // find default filters to save time on first loop
       if (!defaultFiltersLoaded) {
@@ -68,12 +69,12 @@ class Timeline {
 
       // if person fits filters
       if (filters.areas[person.type] && filters.countries[person.country]) {
-        this.state.people.filtered.push(person)
+        // this.state.people.filtered.push(person)
 
         // organize filtered people by year
         for (let year = person.from; year < (person.to == 0 ? CURRENT_YEAR : person.to); year++) {
-          this.state.people.byYear[year] = this.state.people.byYear[year] || []
-          this.state.people.byYear[year].push(i)
+          this.state.people.filteredByYear[year] = this.state.people.filteredByYear[year] || []
+          this.state.people.filteredByYear[year].push(person)
         }
 
         // find ruler.max
@@ -146,11 +147,10 @@ class Timeline {
   }
 
   generateChart() {
-    const { ruler: { min, max }, people: { byYear, filtered } } = this.state
+    const { ruler: { min, max }, people: { filteredByYear, all } } = this.state
 
     let rowTracker = []
     const personTopPixels = (death, birth) => {
-      const distanceFromNow = max - death
       for (let i = 0; i <= rowTracker.length; i++) {
         // debugger
         if (!rowTracker[i] || rowTracker[i] > death) {
@@ -164,10 +164,8 @@ class Timeline {
     chartElement.empty()
     let alreadyDrawn = {}
     for (let year = max; year > min; year--) {
-      const peopleIdx = byYear[year] || []
-      peopleIdx.forEach(personIdx => {
-        const { name, link, to, from: birth } = filtered[personIdx]
-
+      const people = filteredByYear[year] || []
+      people.forEach(({ name, link, to, from: birth }) => {
         if (alreadyDrawn[name]) {
           return false
         }
@@ -179,7 +177,7 @@ class Timeline {
                   .click(() => window.open(link, '_blank'))
                   .css({
                     left: yearLeftPixels(max - death),
-                    top: personTopPixels(to, birth),
+                    top: personTopPixels(death, birth),
                     width: yearWidthPixels(lifespan, 'person'),
                     'background-color': color
                   })
