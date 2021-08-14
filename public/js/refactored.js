@@ -144,6 +144,7 @@ class Timeline {
       const yearMark = $(`<div class='year ${showTick ? 'tick' : ''}' data-year=${year}>${showTick ? year : ' '}</div>`).css({left: yearLeftPixels((max - year), 'year-tick'), width: yearWidthPixels(1)})
       rulerElement.append(yearMark)
     }
+    rulerElement.css({ width: `${(max - min) * YEAR_WIDTH}px` })
   }
 
   generateChart() {
@@ -152,7 +153,6 @@ class Timeline {
     let rowTracker = []
     const personTopPixels = (death, birth) => {
       for (let i = 0; i <= rowTracker.length; i++) {
-        // debugger
         if (!rowTracker[i] || rowTracker[i] > death) {
           rowTracker[i] = birth
           return `${25 + (PERSON_HEIGHT * i)}px`
