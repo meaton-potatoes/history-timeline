@@ -1,42 +1,62 @@
 const CURRENT_YEAR = (new Date).getFullYear()
 const ALL_ITEMS_IN_CATEGORY = 'ALL_ITEMS_IN_CATEGORY'
+const COLORS = ["#E29EFF", "#5ee440", "#f25f10", "#f3c401", "#7088ed", "#e06394", "#5be0ad", "#be8058", "#709b32", "#52dbed", "#cb68cf", "#ec605a", "#c4cf8e", "#0398ce", "#a183b1", "#579c74", "#fcb1ef", "#b4d744", "#fe4878", "#eac56d", "#33a254", "#ef4db2", "#6e9592"]
+const YEAR_WIDTH = 3
+const PERSON_HEIGHT = 26
+
+const yearLeftPixels = distanceFromNow => {
+  return `${distanceFromNow * YEAR_WIDTH}px`
+}
+
+const yearWidthPixels = (years, item) => {
+  if (item == 'person') {
+    return `${(years * YEAR_WIDTH) - 5}px`
+  }
+  return `${years * YEAR_WIDTH}px`
+}
+const sampleArray = array => array[Math.floor(Math.random() * array.length)];
+
+const initialState = {
+  settings: {
+    filters: {
+      areas: {},
+      countries: {}
+    },
+    colorBasedOn: 'area',
+    percentageOfPeople: 100
+  },
+  people: {
+    all: [],
+    filtered: [],
+    byYear: {}
+  },
+  ruler: {
+    max: null,
+    min: null
+  },
+  defaultFiltersLoaded: false,
+  viewport: {}
+}
+
+const logBenchmarks = (name, callback) => {
+  const now = new Date()
+  callback()
+  console.log(name, new Date() - now)
+}
 
 class Timeline {
-  state = {
-    settings: {
-      filters: {
-        areas: {},
-        countries: {}
-      },
-      colorBasedOn: 'area',
-      percentageOfPeople: 100
-    },
-    people: {
-      all: [],
-      filtered: [],
-      byYear: {}
-    },
-    ruler: {
-      max: null,
-      min: 1000000000
-    },
-    defaultFiltersLoaded: false,
-    viewport: {}
-  }
+  state = initialState
 
   constructor(container, people) {
     this.container = container
     this.state.people.all = people
   }
 
-  applyFilters() {
+  filterPeople() {
     const { settings: { filters }, defaultFiltersLoaded } = this.state
 
     // reset years before finding ruler max and min
-    this.state.ruler = {
-      max: null,
-      min: null
-    }
+    this.state.ruler = { max: null, min: null }
 
     this.state.people.filtered = []
     this.state.people.all.forEach((person, i) => {
@@ -82,10 +102,11 @@ class Timeline {
     } else {
       this.state.settings.filters[filterCategory][key] = value
     }
+
     this.render()
   }
 
-  renderSettings() {
+  renderSidebar() {
     const { filters, colorsBasedOn, percentageOfPeople } = this.state.settings
 
     let html = $('<div></div>')
@@ -96,23 +117,16 @@ class Timeline {
         html.append($('<h2>Countries of Origin</h2>'))
       }
 
-      let div = $('<div></div>')
-      let selectAll = $(`<span>Select All</span>`)
-      selectAll.click(() => this.updateFilters(filterCategory, ALL_ITEMS_IN_CATEGORY, true))
-      div.append(selectAll)
-      div.append('<span> | </span>')
-      let removeAll = $(`<span>Remove All</span>`)
-      removeAll.click(() => this.updateFilters(filterCategory, ALL_ITEMS_IN_CATEGORY, false))
-      div.append(removeAll)
+      const div = $('<div></div>')
+                    .append($(`<span>Select All</span>`).click(() => this.updateFilters(filterCategory, ALL_ITEMS_IN_CATEGORY, true)))
+                    .append('<span> | </span>')
+                    .append($(`<span>Remove All</span>`).click(() => this.updateFilters(filterCategory, ALL_ITEMS_IN_CATEGORY, false)))
       html.append(div)
 
       Object.keys(filters[filterCategory]).sort().forEach(key => {
-        let value = filters[filterCategory][key]
-        let div = $('<div></div>')
-        let keyCheckbox = $(`<input id='${filterCategory}-${key}' type='checkbox' ${value && 'checked'}></input>`)
-        keyCheckbox.click(({ currentTarget: { checked } }) => this.updateFilters(filterCategory, key, checked))
-        div.append(keyCheckbox)
-        div.append($(`<label for='${filterCategory}-${key}'>${key}</label>`))
+        const value = filters[filterCategory][key]
+        const keyCheckbox = $(`<input id='${filterCategory}-${key}' type='checkbox' ${value && 'checked'}></input>`).click(({ currentTarget: { checked } }) => this.updateFilters(filterCategory, key, checked))
+        const div = $('<div></div>').append(keyCheckbox).append($(`<label for='${filterCategory}-${key}'>${key}</label>`))
         html.append(div)
       })
     })
@@ -122,54 +136,97 @@ class Timeline {
   renderRuler() {
     const { ruler: { min, max } } = this.state
 
-    this.table = $('<table></table>')
-    let thead = $('<thead></thead>')
+    let rulerElement = $('#ruler')
+    rulerElement.empty()
     for (let year = max; year > min; year--) {
-      let th = $(`<th data-year=${year}>${year % 20 == 0 ? year : ''}</th>`)
-      th.hover(({ currentTarget }) => {
-        const year = $(currentTarget).data('year')
-        const people = (this.state.people.byYear[year] || []).map(i => this.state.people.filtered[i].name)
-        console.log(year, people)
-      })
-      thead.append(th)
+      const showTick = year % 20 == 0
+      const yearMark = $(`<div class='year ${showTick ? 'tick' : ''}' data-year=${year}>${showTick ? year : ' '}</div>`).css({left: yearLeftPixels((max - year), 'year-tick'), width: yearWidthPixels(1)})
+      rulerElement.append(yearMark)
     }
-    this.table.append(thead)
-    this.container.html(this.table)
   }
 
-  renderPeople() {
-    const { ruler, people: { filtered, byYear } } = this.state
+  generateChart() {
+    const { ruler: { min, max }, people: { byYear, filtered } } = this.state
 
-    const rows = []
-    Object.keys(byYear)
-          .map(stringYear => parseInt(stringYear))
-          .sort((a,b) => b - a)
-          .forEach(year => {
-            const peopleLivingInYear = byYear[String(year)]
-            peopleLivingInYear.forEach((personIndex, i) => {
-              // debugger
-              let person = filtered[personIndex]
-              rows[i] = rows[i] || $(`<tr data-row=${i}'></tr>`)
+    let rowTracker = []
+    const personTopPixels = (death, birth) => {
+      const distanceFromNow = max - death
+      for (let i = 0; i <= rowTracker.length; i++) {
+        // debugger
+        if (!rowTracker[i] || rowTracker[i] > death) {
+          rowTracker[i] = birth
+          return `${25 + (PERSON_HEIGHT * i)}px`
+        }
+      } 
+    }
 
-              // for (let blankCounter = year; blankCounter < ruler.max; blankCounter++){
-              //   console.log(blankCounter, person)
-              //   rows[i].append($(`<td data-year=${year}></td>`))
-              // }
-              rows[i].append($(`<td data-year=${year}>${person.name}</td>`))
-            })
-          })
+    let chartElement = $('#chart')
+    chartElement.empty()
+    let alreadyDrawn = {}
+    for (let year = max; year > min; year--) {
+      const peopleIdx = byYear[year] || []
+      peopleIdx.forEach(personIdx => {
+        const { name, link, to, from: birth } = filtered[personIdx]
 
-    rows.forEach(row => {
-      this.table.append(row)
-    })
+        if (alreadyDrawn[name]) {
+          return false
+        }
+
+        const death = (to == 0 ? CURRENT_YEAR : to)
+        const lifespan = death - birth
+        const color = sampleArray(COLORS)
+        const tile = $(`<div class='person'>${name}</div>`)
+                  .click(() => window.open(link, '_blank'))
+                  .css({
+                    left: yearLeftPixels(max - death),
+                    top: personTopPixels(to, birth),
+                    width: yearWidthPixels(lifespan, 'person'),
+                    'background-color': color
+                  })
+        chartElement.append(tile)
+        alreadyDrawn[name] = true
+      })
+    }
   }
+
+  // renderChart() {
+  //   const { people: { filtered } } = this.state
+
+  //   // let rowTracker = []
+  //   // const personTopPixels = ({ to: death, from: birth }) => {
+  //   //   let multiplier = 0
+  //   //   debugger
+  //   //   return `${25 + (PERSON_HEIGHT * multiplier)}px`
+  //   // }
+
+  //   let chartElement = $('#chart')
+  //   chartElement.empty()
+  //   filtered.forEach(person => {
+  //     const death = person.to == 0 ? CURRENT_YEAR : person.to
+  //     const lifespan = death - person.from
+  //     const color = sampleArray(COLORS)
+  //     const tile = $(`<div class='person'>${person.name}</div>`)
+  //                 .click(() => window.open(person.link, '_blank'))
+  //                 .css({
+  //                   left: yearLeftPixels(death),
+  //                   width: yearWidthPixels(lifespan),
+  //                   'background-color': color,
+  //                   height: `18px`,
+  //                   overflow: 'scroll'
+  //                 })
+  //                 .data('birth', person.from)
+  //                 .data('death', death)
+  //                 .data('lifespan', lifespan)
+      
+  //     chartElement.append(tile)
+  //   })
+  // }
 
   render(people) {
-    this.applyFilters()
-    this.renderSettings()
-    this.renderRuler()
-    this.renderPeople()
-    console.log('done')
+    logBenchmarks('filterPeople', () => this.filterPeople())
+    logBenchmarks('renderSidebar', () => this.renderSidebar())
+    logBenchmarks('renderRuler', () => this.renderRuler())
+    logBenchmarks('generateChart', () => this.generateChart())
     window.state = this.state
   }
 }

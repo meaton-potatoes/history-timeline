@@ -4744,10 +4744,10 @@ window.people = [
   },
   {
     "rating": 0.834580296875,
-    "from": 100,
+    "from": 55,
     "name": "Juvenal",
     "country": "Italy",
-    "to": 2,
+    "to": 138,
     "link": "https://en.wikipedia.org/wiki/Juvenal",
     "type": "arts"
   },
