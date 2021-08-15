@@ -28,18 +28,16 @@
       <div id='chart'></div>
     </div>
 
-    <div id="sidebar">
-    </div>
+    <div id="sidebar"></div>
   </div>
   
   <script src="//code.jquery.com/jquery-2.2.0.min.js"></script>
-  <script src="public/data/data_1000.js"></script>
+  <script src="public/data/data_10000.js"></script>
   <script src="public/js/refactored.js"></script>
   <script>
     // $(window.runHistoryTimeline);
     $(document).ready(() => {
-      const container = $('#content')
-      window.timeline = new Timeline(container, window.people)
+      window.timeline = new Timeline(window.people)
       window.timeline.render()
     })
   </script>

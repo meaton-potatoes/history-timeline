@@ -1,4 +1,4 @@
-dataReady({people:[
+window.people = [
     {
         "rating": 1.0,
         "from": -7,
@@ -89970,4 +89970,3 @@ dataReady({people:[
         "type": "sports"
     }
 ]
-})

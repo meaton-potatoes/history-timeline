@@ -17,6 +17,10 @@ a {
   color: #333;
 }
 
+.cursor-pointer:hover {
+  cursor: pointer;
+}
+
 #container {
   display: flex;
   flex: 1;
@@ -54,9 +58,19 @@ a {
   background: #ddd;
   font-family: Tahoma, Geneva, sans-serif;
   z-index: 1;
+  padding: 8px;
 
   display: flex;
   flex-direction: column;
+
+  .muted {
+    color: gray;
+    text-align: center;
+  }
+
+  h1 {
+    text-align: center;
+  }
 
   div.content {
     overflow: scroll;
@@ -122,13 +136,16 @@ a {
     height: 24px;
     border-bottom: 1px solid #000;
     box-shadow: 0px -5px 15px #000;
+    background-color: #fff;
+    z-index: 100;
+    position: sticky;
   }
 
   .person {
     position: absolute;
     padding: 3px;
     height: 18px;
-    overflow: scroll;
+    overflow: hidden;
     white-space: nowrap;
   }
 
@@ -144,6 +161,13 @@ a {
 
   .person:hover {
     cursor: pointer;
+    overflow: visible;
+    z-index: 100;
+  }
+
+  .person:hover span {
+    background-color: initial;
+    display: inline-block;
   }
 
   #chart {
